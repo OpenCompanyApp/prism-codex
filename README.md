@@ -1,8 +1,16 @@
 # Prism Codex
 
-Use your **ChatGPT Pro/Plus/Team subscription** as a [Prism PHP](https://github.com/prism-php/prism) provider. Route AI requests through the Codex API at `chatgpt.com/backend-api/codex/` using OAuth tokens from your subscription --- **$0 per token**.
+> Use your ChatGPT Pro/Plus subscription as a [Prism PHP](https://github.com/prism-php/prism) provider --- **$0 per token** via the Codex API. Part of the [OpenCompany](https://github.com/OpenCompanyApp) AI platform ecosystem.
 
-This package exists because OpenAI's [Codex](https://openai.com/index/introducing-codex/) environment, included with ChatGPT Pro and Plus subscriptions, provides access to powerful models (GPT-5, GPT-5 Codex, etc.) without per-token billing. Prism Codex bridges this into the PHP ecosystem so you can use these models in your Laravel applications through the standard Prism interface --- the same way you'd use OpenAI, Anthropic, or any other provider. It also integrates with the [Laravel AI SDK](https://github.com/laravel/ai) as a gateway driver.
+OpenAI's [Codex](https://openai.com/index/introducing-codex/) environment, included with ChatGPT Pro and Plus subscriptions, provides access to powerful models (GPT-5, GPT-5 Codex, etc.) without per-token billing. Prism Codex bridges this into the PHP ecosystem so you can use these models in your Laravel applications through the standard Prism interface --- the same way you'd use OpenAI, Anthropic, or any other provider. It also integrates with the [Laravel AI SDK](https://github.com/laravel/ai) as a gateway driver.
+
+## About OpenCompany
+
+[OpenCompany](https://github.com/OpenCompanyApp) is an AI-powered workplace platform where teams deploy and coordinate multiple AI agents alongside human collaborators. It combines team messaging, document collaboration, task management, and intelligent automation in a single workspace --- with built-in approval workflows and granular permission controls so organizations can adopt AI agents safely and transparently.
+
+Prism Codex was built to power OpenCompany's agent fleet on ChatGPT subscription models at zero marginal cost --- the same agents that handle analytics, astronomy, document generation, and more can now run on GPT-5 Codex without per-token API billing. If you're building with Laravel and want your AI features to run on your existing ChatGPT subscription, this package gives you that.
+
+OpenCompany is built with Laravel, Vue 3, and Inertia.js. Learn more at [github.com/OpenCompanyApp](https://github.com/OpenCompanyApp).
 
 ## Requirements
 
