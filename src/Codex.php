@@ -113,7 +113,7 @@ class Codex extends OpenAI
 
         throw PrismException::providerRequestErrorWithDetails(
             provider: 'Codex',
-            statusCode: $e->response->getStatusCode(),
+            statusCode: $e->response->status(),
             errorType: data_get($data, 'error.type') ?? data_get($data, 'error_code'),
             errorMessage: $message,
             previous: $e,

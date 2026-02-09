@@ -59,7 +59,7 @@ class CodexLoginCommand extends Command
             $oauthService->storeTokens($tokens);
 
             $email = $oauthService->extractEmailFromJwt($tokens['id_token'] ?? '')
-                ?? $oauthService->extractEmailFromJwt($tokens['access_token'] ?? '');
+                ?? $oauthService->extractEmailFromJwt($tokens['access_token']);
 
             $this->info('Authenticated successfully!');
             if ($email) {
@@ -98,7 +98,7 @@ class CodexLoginCommand extends Command
         $this->line('  Enter the code above and authorize access.');
         $this->newLine();
 
-        $interval = ($device['interval'] ?? 5) + 3; // Safety margin
+        $interval = $device['interval'] + 3; // Safety margin
         $maxAttempts = (int) ceil(300 / $interval); // 5 minute timeout
 
         $this->info('Polling for authorization...');

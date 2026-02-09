@@ -278,11 +278,6 @@ class CodexOAuthService
         }
 
         $payload = base64_decode(strtr($parts[1], '-_', '+/'));
-
-        if ($payload === false) {
-            return null;
-        }
-
         $claims = json_decode($payload, true);
 
         return is_array($claims) ? $claims : null;

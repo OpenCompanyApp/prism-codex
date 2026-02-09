@@ -5,7 +5,18 @@ declare(strict_types=1);
 namespace OpenCompany\PrismCodex;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $access_token
+ * @property string $refresh_token
+ * @property Carbon $expires_at
+ * @property string|null $account_id
+ * @property string|null $email
+ * @property array<string, mixed>|null $token_data
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
 class CodexTokenStore extends Model
 {
     protected $guarded = [];
