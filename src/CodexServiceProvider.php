@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace OpenCompany\PrismCodex;
 
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
+use OpenCompany\PrismCodex\Contracts\CodexTokenStore as CodexTokenStoreContract;
 use OpenCompany\PrismCodex\Console\CodexLoginCommand;
 use OpenCompany\PrismCodex\Console\CodexLogoutCommand;
 use OpenCompany\PrismCodex\Console\CodexStatusCommand;
+use OpenCompany\PrismCodex\Stores\EloquentCodexTokenStore;
 use Prism\Prism\PrismManager;
 
 class CodexServiceProvider extends ServiceProvider
@@ -16,8 +19,13 @@ class CodexServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/codex.php', 'codex');
 
-        $this->app->singleton(CodexTokenStore::class);
-        $this->app->singleton(CodexOAuthService::class);
+        $this->app->singleton(CodexTokenStoreContract::class, EloquentCodexTokenStore::class);
+        $this->app->singleton(CodexOAuthService::class, function ($app): CodexOAuthService {
+            return new CodexOAuthService(
+                $app->make(CodexTokenStoreContract::class),
+                $app->make(HttpFactory::class),
+            );
+        });
     }
 
     public function boot(): void

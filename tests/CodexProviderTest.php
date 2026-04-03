@@ -17,7 +17,7 @@ class CodexProviderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->oauthService = new CodexOAuthService;
+        $this->oauthService = $this->app->make(CodexOAuthService::class);
     }
 
     public function test_provider_extends_openai(): void
@@ -91,7 +91,9 @@ class CodexProviderTest extends TestCase
         $client->post('responses', ['model' => 'gpt-5.3-codex', 'input' => 'test']);
 
         Http::assertSent(function ($request) {
-            return $request->hasHeader('Authorization', 'Bearer my-oauth-token');
+            return $request->hasHeader('Authorization', 'Bearer my-oauth-token')
+                && $request->hasHeader('originator', 'prism-codex-tests')
+                && $request->hasHeader('User-Agent', 'prism-codex-tests/1.0');
         });
     }
 

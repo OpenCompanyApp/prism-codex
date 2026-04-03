@@ -15,7 +15,7 @@ class CodexOAuthServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new CodexOAuthService;
+        $this->service = $this->app->make(CodexOAuthService::class);
     }
 
     public function test_generate_pkce_produces_valid_verifier(): void
@@ -24,7 +24,8 @@ class CodexOAuthServiceTest extends TestCase
 
         $this->assertArrayHasKey('verifier', $pkce);
         $this->assertArrayHasKey('challenge', $pkce);
-        $this->assertEquals(43, strlen($pkce['verifier']));
+        $this->assertGreaterThanOrEqual(43, strlen($pkce['verifier']));
+        $this->assertLessThanOrEqual(128, strlen($pkce['verifier']));
     }
 
     public function test_generate_pkce_challenge_is_base64url_sha256(): void
@@ -47,6 +48,8 @@ class CodexOAuthServiceTest extends TestCase
         $this->assertStringContainsString('redirect_uri=', $url);
         $this->assertStringContainsString('code_challenge_method=S256', $url);
         $this->assertStringContainsString('codex_cli_simplified_flow=true', $url);
+        $this->assertStringContainsString('id_token_add_organizations=true', $url);
+        $this->assertStringContainsString('originator=prism-codex-tests', $url);
         $this->assertStringContainsString('response_type=code', $url);
         $this->assertStringContainsString(urlencode('openid profile email offline_access'), $url);
     }
@@ -70,6 +73,7 @@ class CodexOAuthServiceTest extends TestCase
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), 'auth.openai.com/oauth/token')
+                && $request->hasHeader('User-Agent', 'prism-codex-tests/1.0')
                 && $request['grant_type'] === 'authorization_code'
                 && $request['code'] === 'auth-code'
                 && $request['code_verifier'] === 'verifier'
@@ -102,6 +106,7 @@ class CodexOAuthServiceTest extends TestCase
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), 'auth.openai.com/oauth/token')
+                && $request->hasHeader('User-Agent', 'prism-codex-tests/1.0')
                 && $request['grant_type'] === 'refresh_token'
                 && $request['refresh_token'] === 'old-refresh'
                 && $request['client_id'] === CodexOAuthService::CLIENT_ID;
@@ -193,6 +198,7 @@ class CodexOAuthServiceTest extends TestCase
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), 'deviceauth/usercode')
+                && $request->hasHeader('User-Agent', 'prism-codex-tests/1.0')
                 && $request['client_id'] === CodexOAuthService::CLIENT_ID;
         });
     }

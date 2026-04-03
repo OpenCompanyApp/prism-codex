@@ -42,12 +42,14 @@ class Codex extends OpenAI
 
         if (! $token) {
             throw new \RuntimeException(
-                'Codex not authenticated. Run: php artisan codex:login'
+                'Codex not authenticated.'
             );
         }
 
         $headers = array_filter([
             'ChatGPT-Account-Id' => $this->accountId ?? $this->oauthService->getAccountId(),
+            'originator' => $this->configuredOriginator(),
+            'User-Agent' => $this->configuredUserAgent(),
         ]);
 
         return $this->baseClient()
@@ -118,5 +120,19 @@ class Codex extends OpenAI
             errorMessage: $message,
             previous: $e,
         );
+    }
+
+    private function configuredOriginator(): ?string
+    {
+        $originator = trim((string) config('codex.originator', 'prism-codex'));
+
+        return $originator !== '' ? $originator : null;
+    }
+
+    private function configuredUserAgent(): ?string
+    {
+        $userAgent = trim((string) config('codex.user_agent', 'prism-codex'));
+
+        return $userAgent !== '' ? $userAgent : null;
     }
 }

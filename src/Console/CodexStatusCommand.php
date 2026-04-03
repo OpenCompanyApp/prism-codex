@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace OpenCompany\PrismCodex\Console;
 
 use Illuminate\Console\Command;
-use OpenCompany\PrismCodex\CodexOAuthService;
-use OpenCompany\PrismCodex\CodexTokenStore;
+use OpenCompany\PrismCodex\Contracts\CodexTokenStore;
 
 class CodexStatusCommand extends Command
 {
@@ -14,9 +13,9 @@ class CodexStatusCommand extends Command
 
     protected $description = 'Show Codex authentication status';
 
-    public function handle(CodexOAuthService $oauthService): int
+    public function handle(CodexTokenStore $tokens): int
     {
-        $stored = CodexTokenStore::current();
+        $stored = $tokens->current();
 
         if (! $stored) {
             $this->warn('Codex is not configured. Run: php artisan codex:login');
@@ -29,10 +28,10 @@ class CodexStatusCommand extends Command
             [
                 ['Status', $stored->isExpired() ? 'Expired' : 'Active'],
                 ['Email', $stored->email ?? 'N/A'],
-                ['Account ID', $stored->account_id ?? 'N/A'],
-                ['Token Expires', $stored->expires_at->toDateTimeString()],
+                ['Account ID', $stored->accountId ?? 'N/A'],
+                ['Token Expires', $stored->expiresAt->format('Y-m-d H:i:s')],
                 ['Valid', $stored->isExpiringSoon() ? 'Needs refresh' : 'Yes'],
-                ['Last Updated', $stored->updated_at?->toDateTimeString() ?? 'N/A'],
+                ['Last Updated', $stored->updatedAt?->format('Y-m-d H:i:s') ?? 'N/A'],
             ],
         );
 

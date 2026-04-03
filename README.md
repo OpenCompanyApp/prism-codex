@@ -212,14 +212,16 @@ Now you can use Codex through the Laravel AI SDK agent system by setting `brain:
 
 | Model | Description |
 |-------|-------------|
-| `gpt-5-codex` | GPT-5 Codex |
-| `gpt-5-codex-mini` | GPT-5 Codex Mini |
-| `gpt-5` | GPT-5 |
+| `gpt-5.4` | GPT-5.4 |
+| `gpt-5.4-mini` | GPT-5.4 Mini |
+| `gpt-5.3-codex` | GPT-5.3 Codex |
 | `gpt-5.2-codex` | GPT-5.2 Codex |
 | `gpt-5.2` | GPT-5.2 |
 | `gpt-5.1-codex` | GPT-5.1 Codex |
 | `gpt-5.1-codex-max` | GPT-5.1 Codex Max |
 | `gpt-5.1-codex-mini` | GPT-5.1 Codex Mini |
+| `gpt-5-codex` | GPT-5 Codex |
+| `gpt-5-codex-mini` | GPT-5 Codex Mini |
 
 Model availability depends on your subscription tier. The Codex API may add or change model identifiers over time.
 
@@ -290,6 +292,7 @@ The Codex API at `chatgpt.com/backend-api/codex/responses` has several differenc
 | Streaming | Optional | **Mandatory** (`stream: true` required) |
 | Storage | Configurable | Must be `store: false` |
 | Auth | `Authorization: Bearer sk-...` (API key) | `Authorization: Bearer <oauth_token>` + `ChatGPT-Account-Id` header |
+| Request metadata | Usually optional | First-party style `originator` + `User-Agent` headers supported |
 | Tool schemas | Flexible | Strict JSON Schema validation (arrays require `items`) |
 
 The package handles all of these transparently:
@@ -348,6 +351,9 @@ return [
     'oauth_port' => env('CODEX_OAUTH_PORT', 9876),
     'callback_route' => env('CODEX_CALLBACK_ROUTE', '/auth/codex/callback'),
     'table' => env('CODEX_TOKEN_TABLE', 'codex_tokens'),
+    'id_token_add_organizations' => env('CODEX_ID_TOKEN_ADD_ORGANIZATIONS', true),
+    'originator' => env('CODEX_ORIGINATOR', 'prism-codex'),
+    'user_agent' => env('CODEX_USER_AGENT', 'prism-codex'),
 ];
 ```
 
@@ -359,9 +365,15 @@ src/
 ├── CodexOAuthService.php        # OAuth flows, token refresh, JWT parsing
 ├── CodexTokenStore.php          # Encrypted Eloquent model (single-row upsert)
 ├── CodexServiceProvider.php     # Auto-discovery, PrismManager registration
+├── Contracts/
+│   └── CodexTokenStore.php      # Storage contract for token persistence
 ├── Handlers/
 │   ├── CodexText.php            # SSE-to-sync bridge for non-streaming calls
 │   └── CodexStream.php          # Streaming handler with Codex request format
+├── Stores/
+│   └── EloquentCodexTokenStore.php # Default Laravel-backed token store
+├── ValueObjects/
+│   └── CodexToken.php           # Immutable token value object
 ├── Concerns/
 │   └── SanitizesToolSchemas.php # Recursive array items fixer for strict validation
 ├── Console/

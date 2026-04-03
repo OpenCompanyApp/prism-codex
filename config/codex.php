@@ -12,4 +12,11 @@ return [
 
     // Token table name
     'table' => env('CODEX_TOKEN_TABLE', 'codex_tokens'),
+
+    // Include organization claims in the returned ID token.
+    'id_token_add_organizations' => env('CODEX_ID_TOKEN_ADD_ORGANIZATIONS', true),
+
+    // Codex-specific request metadata used by first-party clients.
+    'originator' => env('CODEX_ORIGINATOR', 'prism-codex'),
+    'user_agent' => env('CODEX_USER_AGENT', 'prism-codex'),
 ];

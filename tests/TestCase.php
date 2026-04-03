@@ -28,6 +28,8 @@ abstract class TestCase extends OrchestraTestCase
         $app['config']->set('codex.table', 'codex_tokens');
         $app['config']->set('codex.url', 'https://chatgpt.com/backend-api/codex');
         $app['config']->set('codex.oauth_port', 9876);
+        $app['config']->set('codex.originator', 'prism-codex-tests');
+        $app['config']->set('codex.user_agent', 'prism-codex-tests/1.0');
     }
 
     protected function defineDatabaseMigrations(): void

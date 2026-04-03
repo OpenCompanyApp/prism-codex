@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OpenCompany\PrismCodex\Console;
 
 use Illuminate\Console\Command;
-use OpenCompany\PrismCodex\CodexTokenStore;
+use OpenCompany\PrismCodex\Contracts\CodexTokenStore;
 
 class CodexLogoutCommand extends Command
 {
@@ -13,9 +13,9 @@ class CodexLogoutCommand extends Command
 
     protected $description = 'Remove stored Codex authentication tokens';
 
-    public function handle(): int
+    public function handle(CodexTokenStore $tokens): int
     {
-        $stored = CodexTokenStore::current();
+        $stored = $tokens->current();
 
         if (! $stored) {
             $this->info('No Codex tokens stored.');
@@ -23,7 +23,7 @@ class CodexLogoutCommand extends Command
             return self::SUCCESS;
         }
 
-        CodexTokenStore::clear();
+        $tokens->clear();
         $this->info('Codex tokens removed.');
 
         return self::SUCCESS;

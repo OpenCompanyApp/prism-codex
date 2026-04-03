@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OpenCompany\PrismCodex;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\PendingRequest;
+use OpenCompany\PrismCodex\Contracts\CodexTokenStore;
+use OpenCompany\PrismCodex\ValueObjects\CodexToken;
 
 class CodexOAuthService
 {
@@ -17,6 +19,11 @@ class CodexOAuthService
 
     public const DEVICE_AUTH_REDIRECT_URI = 'https://auth.openai.com/deviceauth/callback';
 
+    public function __construct(
+        private readonly CodexTokenStore $tokens,
+        private readonly HttpFactory $http,
+    ) {}
+
     /**
      * Generate PKCE code verifier and challenge.
      *
@@ -24,7 +31,7 @@ class CodexOAuthService
      */
     public function generatePkce(): array
     {
-        $verifier = Str::random(43);
+        $verifier = rtrim(strtr(base64_encode(random_bytes(64)), '+/', '-_'), '=');
         $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
 
         return [
@@ -38,7 +45,7 @@ class CodexOAuthService
      */
     public function buildAuthorizationUrl(string $challenge, string $state, string $redirectUri): string
     {
-        return self::ISSUER.'/oauth/authorize?'.http_build_query([
+        $params = [
             'client_id' => self::CLIENT_ID,
             'scope' => self::SCOPES,
             'response_type' => 'code',
@@ -47,7 +54,18 @@ class CodexOAuthService
             'code_challenge_method' => 'S256',
             'state' => $state,
             'codex_cli_simplified_flow' => 'true',
-        ]);
+        ];
+
+        if ((bool) config('codex.id_token_add_organizations', true)) {
+            $params['id_token_add_organizations'] = 'true';
+        }
+
+        $originator = trim((string) config('codex.originator', 'prism-codex'));
+        if ($originator !== '') {
+            $params['originator'] = $originator;
+        }
+
+        return self::ISSUER.'/oauth/authorize?'.http_build_query($params);
     }
 
     /**
@@ -57,7 +75,7 @@ class CodexOAuthService
      */
     public function exchangeCode(string $code, string $verifier, string $redirectUri): array
     {
-        $response = Http::asForm()->post(self::ISSUER.'/oauth/token', [
+        $response = $this->authClient()->asForm()->post(self::ISSUER.'/oauth/token', [
             'grant_type' => 'authorization_code',
             'client_id' => self::CLIENT_ID,
             'code' => $code,
@@ -77,7 +95,7 @@ class CodexOAuthService
      */
     public function initiateDeviceAuth(): array
     {
-        $response = Http::asJson()->post(self::ISSUER.'/api/accounts/deviceauth/usercode', [
+        $response = $this->authClient()->asJson()->post(self::ISSUER.'/api/accounts/deviceauth/usercode', [
             'client_id' => self::CLIENT_ID,
         ]);
 
@@ -93,7 +111,7 @@ class CodexOAuthService
      */
     public function pollDeviceAuth(string $deviceAuthId, string $userCode): ?array
     {
-        $response = Http::asJson()->post(self::ISSUER.'/api/accounts/deviceauth/token', [
+        $response = $this->authClient()->asJson()->post(self::ISSUER.'/api/accounts/deviceauth/token', [
             'device_auth_id' => $deviceAuthId,
             'user_code' => $userCode,
         ]);
@@ -124,15 +142,15 @@ class CodexOAuthService
      */
     public function refreshToken(): bool
     {
-        $stored = CodexTokenStore::current();
+        $stored = $this->tokens->current();
 
         if (! $stored) {
             return false;
         }
 
-        $response = Http::asForm()->post(self::ISSUER.'/oauth/token', [
+        $response = $this->authClient()->asForm()->post(self::ISSUER.'/oauth/token', [
             'grant_type' => 'refresh_token',
-            'refresh_token' => $stored->refresh_token,
+            'refresh_token' => $stored->refreshToken,
             'client_id' => self::CLIENT_ID,
         ]);
 
@@ -144,12 +162,12 @@ class CodexOAuthService
 
         $accountId = $this->extractAccountIdFromJwt($data['access_token'] ?? '')
             ?? $this->extractAccountIdFromJwt($data['id_token'] ?? '')
-            ?? $stored->account_id;
+            ?? $stored->accountId;
 
         $this->storeTokens([
             'access_token' => $data['access_token'],
-            'refresh_token' => $data['refresh_token'] ?? $stored->refresh_token,
-            'expires_at' => now()->addSeconds($data['expires_in'] ?? 3600),
+            'refresh_token' => $data['refresh_token'] ?? $stored->refreshToken,
+            'expires_at' => (new \DateTimeImmutable)->modify('+'.((int) ($data['expires_in'] ?? 3600)).' seconds'),
             'account_id' => $accountId,
         ]);
 
@@ -161,7 +179,7 @@ class CodexOAuthService
      */
     public function getAccessToken(): ?string
     {
-        $stored = CodexTokenStore::current();
+        $stored = $this->tokens->current();
 
         if (! $stored) {
             return null;
@@ -171,10 +189,10 @@ class CodexOAuthService
             if (! $this->refreshToken()) {
                 return null;
             }
-            $stored = CodexTokenStore::current();
+            $stored = $this->tokens->current();
         }
 
-        return $stored?->access_token;
+        return $stored?->accessToken;
     }
 
     /**
@@ -182,7 +200,7 @@ class CodexOAuthService
      */
     public function getAccountId(): ?string
     {
-        return CodexTokenStore::current()?->account_id;
+        return $this->tokens->current()?->accountId;
     }
 
     /**
@@ -190,13 +208,13 @@ class CodexOAuthService
      */
     public function isConfigured(): bool
     {
-        return CodexTokenStore::current() !== null;
+        return $this->tokens->current() !== null;
     }
 
     /**
      * Store token data from an OAuth exchange.
      */
-    public function storeTokens(array $data): void
+    public function storeTokens(array $data): CodexToken
     {
         $accessToken = $data['access_token'];
 
@@ -207,16 +225,18 @@ class CodexOAuthService
         $email = $this->extractEmailFromJwt($data['id_token'] ?? '')
             ?? $this->extractEmailFromJwt($accessToken);
 
-        CodexTokenStore::store([
-            'access_token' => $accessToken,
-            'refresh_token' => $data['refresh_token'],
-            'expires_at' => $data['expires_at'] ?? now()->addSeconds($data['expires_in'] ?? 3600),
-            'account_id' => $accountId,
-            'email' => $email,
-            'token_data' => array_filter([
+        $expiresAt = $data['expires_at'] ?? (new \DateTimeImmutable)->modify('+'.((int) ($data['expires_in'] ?? 3600)).' seconds');
+
+        return $this->tokens->save(new CodexToken(
+            accessToken: $accessToken,
+            refreshToken: (string) ($data['refresh_token'] ?? ''),
+            expiresAt: $expiresAt instanceof \DateTimeImmutable ? $expiresAt : new \DateTimeImmutable((string) $expiresAt),
+            accountId: $accountId,
+            email: $email,
+            tokenData: array_filter([
                 'id_token' => $data['id_token'] ?? null,
             ]),
-        ]);
+        ));
     }
 
     /**
@@ -281,5 +301,17 @@ class CodexOAuthService
         $claims = json_decode($payload, true);
 
         return is_array($claims) ? $claims : null;
+    }
+
+    private function authClient(): PendingRequest
+    {
+        $client = $this->http;
+        $userAgent = trim((string) config('codex.user_agent', 'prism-codex'));
+
+        if ($userAgent !== '') {
+            $client = $client->withUserAgent($userAgent);
+        }
+
+        return $client;
     }
 }

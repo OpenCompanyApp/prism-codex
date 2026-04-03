@@ -33,7 +33,7 @@ class CodexLoginCommandTest extends TestCase
 
         // We can't easily test the full interactive flow, but we can test device auth
         // through the OAuth service directly
-        $service = new CodexOAuthService;
+        $service = $this->app->make(CodexOAuthService::class);
 
         $device = $service->initiateDeviceAuth();
         $this->assertEquals('WXYZ-5678', $device['user_code']);
@@ -58,7 +58,7 @@ class CodexLoginCommandTest extends TestCase
             ]),
         ]);
 
-        $service = new CodexOAuthService;
+        $service = $this->app->make(CodexOAuthService::class);
         $tokens = $service->pollDeviceAuth('dev_123', 'CODE-1234');
 
         $this->assertNotNull($tokens);
